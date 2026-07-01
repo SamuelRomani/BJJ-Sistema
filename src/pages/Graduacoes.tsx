@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useStore } from '@/store/useStore'
-import { mockGraduacoes } from '@/data/mockData'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Award, ChevronRight, CheckCircle2, Star, ArrowRight, Circle, FileDown } from 'lucide-react'
@@ -111,7 +110,7 @@ type TipoPromocao = 'grau' | 'faixa'
 export function Graduacoes() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
-  const { alunos, updateAluno, academiaAtualId, academias } = useStore()
+  const { alunos, updateAluno, academiaAtualId, academias, graduacoes } = useStore()
   const academia = academias.find(a => a.id === academiaAtualId)
 
   const [alunoId, setAlunoId] = useState(searchParams.get('aluno') || '')
@@ -134,7 +133,7 @@ export function Graduacoes() {
 
   // Faixas já na faixa atual — para dar grau, usa a mesma faixa
   const faixasModalidade = aluno
-    ? mockGraduacoes
+    ? graduacoes
         .filter(g => g.modalidade_id === aluno.modalidade_principal_id)
         .sort((a, b) => a.sequencia - b.sequencia)
     : []

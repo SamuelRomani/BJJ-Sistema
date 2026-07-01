@@ -3,7 +3,7 @@
  * para os tipos que o Zustand store já usa.
  */
 import { supabase } from '@/lib/supabase'
-import type { Academia, Aluno, Turma, Mensalidade, CheckIn, Modalidade, Pacote, Comunicado, User } from '@/types'
+import type { Academia, Aluno, Turma, Mensalidade, CheckIn, Modalidade, Pacote, Comunicado, User, Graduacao } from '@/types'
 
 export const dataService = {
   async carregarTudo(academiaId: string) {
@@ -19,6 +19,7 @@ export const dataService = {
       pacotesResult,
       comunicadosResult,
       professoresResult,
+      graduacoesResult,
     ] = await Promise.all([
       db.from('academias').select('*').eq('id', academiaId).single(),
 
@@ -41,6 +42,9 @@ export const dataService = {
       db.from('pacotes').select('*').eq('academia_id', academiaId),
       db.from('comunicados').select('*').eq('academia_id', academiaId).order('created_at', { ascending: false }),
       db.from('perfis').select('*').eq('academia_id', academiaId).eq('role', 'professor'),
+      db.from('graduacoes').select('*, modalidade:modalidades!inner(academia_id)')
+        .eq('modalidade.academia_id', academiaId)
+        .order('sequencia'),
     ])
 
     const turmas = mapTurmas(turmasResult.data ?? [])
@@ -66,6 +70,7 @@ export const dataService = {
       professores: mapProfessores(professoresResult.data ?? [], academiaId),
       mensalidades: mapMensalidades(mensalidadesResult.data ?? []),
       checkIns:    mapCheckIns(checkInsResult.data ?? []),
+      graduacoes:  mapGraduacoes(graduacoesResult.data ?? []),
     }
   },
 }
@@ -214,6 +219,17 @@ function mapComunicados(rows: any[], academiaId: string): Comunicado[] {
     destinatarios: r.destinatarios,
     criado_em: r.created_at,
     criado_por: r.criado_por ?? 'Sistema',
+  }))
+}
+
+function mapGraduacoes(rows: any[]): Graduacao[] {
+  return rows.map(r => ({
+    id: r.id,
+    modalidade_id: r.modalidade_id,
+    nome: r.nome,
+    cor_hex: r.cor_hex,
+    sequencia: r.sequencia,
+    tempo_minimo_dias: r.tempo_minimo_dias ?? undefined,
   }))
 }
 

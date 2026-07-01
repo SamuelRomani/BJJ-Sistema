@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
-import type { User, Aluno, Turma, Mensalidade, CheckIn, Academia, Modalidade, Pacote, Comunicado } from '@/types'
+import type { User, Aluno, Turma, Mensalidade, CheckIn, Academia, Modalidade, Pacote, Comunicado, Graduacao } from '@/types'
 import { mockAlunos, mockTurmas, mockMensalidades, mockCheckIns, mockAcademias, mockProfessores, mockModalidades, mockPacotes, mockUsuarios } from '@/data/mockData'
 import { writesService } from '@/services/writes.service'
 
@@ -16,6 +16,7 @@ interface AppState {
   mensalidades: Mensalidade[]
   checkIns: CheckIn[]
   comunicados: Comunicado[]
+  graduacoes: Graduacao[]
   sidebarOpen: boolean
   darkMode: boolean
 
@@ -35,6 +36,7 @@ interface AppState {
     checkIns?: CheckIn[]
     comunicados?: Comunicado[]
     professores?: User[]
+    graduacoes?: Graduacao[]
   }) => void
   setSidebarOpen: (open: boolean) => void
   toggleDarkMode: () => void
@@ -65,6 +67,10 @@ interface AppState {
   addComunicado: (c: Comunicado) => void
   removeComunicado: (id: string) => void
 
+  addGraduacao: (g: Graduacao) => void
+  updateGraduacao: (id: string, data: Partial<Graduacao>) => void
+  removeGraduacao: (id: string) => void
+
   resetDados: () => void
 }
 
@@ -80,6 +86,7 @@ const INITIAL_STATE = {
   mensalidades: mockMensalidades,
   checkIns: mockCheckIns,
   comunicados: [] as Comunicado[],
+  graduacoes: [] as Graduacao[],
   sidebarOpen: true,
   darkMode: false,
 }
@@ -114,6 +121,7 @@ export const useStore = create<AppState>()(
         checkIns:     data.checkIns     ?? s.checkIns,
         comunicados:  data.comunicados  ?? s.comunicados,
         professores:  data.professores  ?? s.professores,
+        graduacoes:   data.graduacoes   ?? s.graduacoes,
       })),
       setSidebarOpen: (open) => set({ sidebarOpen: open }),
       toggleDarkMode: () => set(s => ({ darkMode: !s.darkMode })),
@@ -194,6 +202,19 @@ export const useStore = create<AppState>()(
         writesService.removerComunicado(id).catch(e => console.error('removeComunicado:', e))
       },
 
+      addGraduacao: (g) => {
+        set(s => ({ graduacoes: [...s.graduacoes, g].sort((a, b) => a.sequencia - b.sequencia) }))
+        writesService.inserirGraduacao(g).catch(e => console.error('addGraduacao:', e))
+      },
+      updateGraduacao: (id, data) => {
+        set(s => ({ graduacoes: s.graduacoes.map(g => g.id === id ? { ...g, ...data } : g) }))
+        writesService.atualizarGraduacao(id, data).catch(e => console.error('updateGraduacao:', e))
+      },
+      removeGraduacao: (id) => {
+        set(s => ({ graduacoes: s.graduacoes.filter(g => g.id !== id) }))
+        writesService.removerGraduacao(id).catch(e => console.error('removeGraduacao:', e))
+      },
+
       updateAcademia: (id, data) => {
         set(s => ({ academias: s.academias.map(a => a.id === id ? { ...a, ...data } : a) }))
         writesService.atualizarAcademia(id, data).catch(e => console.error('updateAcademia:', e))
@@ -217,6 +238,7 @@ export const useStore = create<AppState>()(
         mensalidades: s.mensalidades,
         checkIns: s.checkIns,
         comunicados: s.comunicados,
+        graduacoes: s.graduacoes,
         sidebarOpen: s.sidebarOpen,
         darkMode: s.darkMode,
       }),

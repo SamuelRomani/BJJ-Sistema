@@ -3,7 +3,7 @@
  * O store chama estas funções de forma fire-and-forget após atualizar o estado local.
  */
 import { supabase } from '@/lib/supabase'
-import type { Aluno, CheckIn, Mensalidade, Comunicado, Turma, Pacote, Academia } from '@/types'
+import type { Aluno, CheckIn, Mensalidade, Comunicado, Turma, Pacote, Academia, Graduacao } from '@/types'
 
 const db = supabase as any
 
@@ -253,6 +253,35 @@ export const writesService = {
 
   async atualizarModalidade(id: string, data: { nome?: string; descricao?: string; tem_graus?: boolean; max_graus?: number }) {
     const { error } = await db.from('modalidades').update(data).eq('id', id)
+    if (error) throw error
+  },
+
+  // ── GRADUAÇÕES ─────────────────────────────────────────────
+  async inserirGraduacao(g: Graduacao) {
+    const { error } = await db.from('graduacoes').insert({
+      id:                g.id,
+      modalidade_id:     g.modalidade_id,
+      nome:              g.nome,
+      cor_hex:           g.cor_hex,
+      sequencia:         g.sequencia,
+      tempo_minimo_dias: g.tempo_minimo_dias ?? null,
+    })
+    if (error) throw error
+  },
+
+  async atualizarGraduacao(id: string, data: Partial<Graduacao>) {
+    const payload: Record<string, any> = {}
+    if (data.nome !== undefined)              payload.nome = data.nome
+    if (data.cor_hex !== undefined)           payload.cor_hex = data.cor_hex
+    if (data.sequencia !== undefined)         payload.sequencia = data.sequencia
+    if (data.tempo_minimo_dias !== undefined) payload.tempo_minimo_dias = data.tempo_minimo_dias ?? null
+    if (Object.keys(payload).length === 0) return
+    const { error } = await db.from('graduacoes').update(payload).eq('id', id)
+    if (error) throw error
+  },
+
+  async removerGraduacao(id: string) {
+    const { error } = await db.from('graduacoes').delete().eq('id', id)
     if (error) throw error
   },
 

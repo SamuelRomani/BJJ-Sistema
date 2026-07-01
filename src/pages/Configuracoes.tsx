@@ -6,11 +6,11 @@ import {
   Plus, Edit2, Trash2, X, Check, Users, Dumbbell, Moon, Sun,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import type { Academia, HorarioFuncionamento, User, Modalidade } from '@/types'
+import type { Academia, HorarioFuncionamento, User, Modalidade, Graduacao } from '@/types'
 
 const DIAS = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
-type Tab = 'geral' | 'horarios' | 'tema' | 'professores' | 'modalidades'
+type Tab = 'geral' | 'horarios' | 'tema' | 'professores' | 'modalidades' | 'faixas'
 
 // ──────────────────────────────────────────────────────────
 // Helpers
@@ -49,12 +49,14 @@ export function Configuracoes() {
     academiaAtualId, academias, updateAcademia,
     professores: todosProfessores, addProfessor, updateProfessor,
     modalidades: todasModalidades, addModalidade, updateModalidade,
+    graduacoes: todasGraduacoes, addGraduacao, updateGraduacao, removeGraduacao,
     darkMode, toggleDarkMode,
   } = useStore()
   const academia = academias.find(a => a.id === academiaAtualId)
 
   const professores = todosProfessores.filter(p => p.academia_id === academiaAtualId)
   const modalidades = todasModalidades.filter(m => m.academia_id === academiaAtualId)
+  const graduacoes = todasGraduacoes.filter(g => modalidades.some(m => m.id === g.modalidade_id))
 
   const [form, setForm] = useState<Partial<Academia>>({})
   const [horarios, setHorarios] = useState<HorarioFuncionamento[]>([])
@@ -89,6 +91,7 @@ export function Configuracoes() {
     { key: 'horarios',     label: 'Horários' },
     { key: 'professores',  label: 'Professores' },
     { key: 'modalidades',  label: 'Modalidades' },
+    { key: 'faixas',       label: 'Faixas' },
     { key: 'tema',         label: 'Aparência' },
   ]
 
@@ -248,6 +251,17 @@ export function Configuracoes() {
           academiaId={academiaAtualId}
           onAdd={addModalidade}
           onUpdate={updateModalidade}
+        />
+      )}
+
+      {/* === FAIXAS === */}
+      {tab === 'faixas' && (
+        <FaixasTab
+          graduacoes={graduacoes}
+          modalidades={modalidades}
+          onAdd={addGraduacao}
+          onUpdate={updateGraduacao}
+          onRemove={removeGraduacao}
         />
       )}
 
@@ -615,4 +629,223 @@ function ModalidadesTab({
       )}
     </div>
   )
+}
+
+// ──────────────────────────────────────────────────────────
+// Faixas Tab
+// ──────────────────────────────────────────────────────────
+function FaixasTab({
+  graduacoes, modalidades, onAdd, onUpdate, onRemove,
+}: {
+  graduacoes: Graduacao[]
+  modalidades: Modalidade[]
+  onAdd: (g: Graduacao) => void
+  onUpdate: (id: string, data: Partial<Graduacao>) => void
+  onRemove: (id: string) => void
+}) {
+  const [filtroModalidadeId, setFiltroModalidadeId] = useState(modalidades[0]?.id ?? '')
+  const [showForm, setShowForm] = useState(false)
+  const [editId, setEditId] = useState<string | null>(null)
+  const [form, setForm] = useState({ nome: '', cor_hex: '#ffffff', sequencia: 1, tempo_minimo_dias: '' })
+
+  const faixasDaModalidade = graduacoes
+    .filter(g => g.modalidade_id === filtroModalidadeId)
+    .sort((a, b) => a.sequencia - b.sequencia)
+
+  function resetForm() {
+    setShowForm(false)
+    setEditId(null)
+    const proxSeq = (faixasDaModalidade[faixasDaModalidade.length - 1]?.sequencia ?? 0) + 1
+    setForm({ nome: '', cor_hex: '#ffffff', sequencia: proxSeq, tempo_minimo_dias: '' })
+  }
+
+  function startEdit(g: Graduacao) {
+    setEditId(g.id)
+    setForm({ nome: g.nome, cor_hex: g.cor_hex, sequencia: g.sequencia, tempo_minimo_dias: g.tempo_minimo_dias ? String(g.tempo_minimo_dias) : '' })
+    setShowForm(true)
+  }
+
+  function salvar() {
+    if (!form.nome.trim()) return toast.error('Nome da faixa é obrigatório')
+    if (!filtroModalidadeId) return toast.error('Selecione uma modalidade')
+    const payload: Graduacao = {
+      id: editId ?? crypto.randomUUID(),
+      modalidade_id: filtroModalidadeId,
+      nome: form.nome.trim(),
+      cor_hex: form.cor_hex,
+      sequencia: Number(form.sequencia),
+      tempo_minimo_dias: form.tempo_minimo_dias ? Number(form.tempo_minimo_dias) : undefined,
+    }
+    if (editId) {
+      onUpdate(editId, payload)
+      toast.success('Faixa atualizada!')
+    } else {
+      onAdd(payload)
+      toast.success('Faixa cadastrada!')
+    }
+    resetForm()
+  }
+
+  const modalidadeAtual = modalidades.find(m => m.id === filtroModalidadeId)
+
+  return (
+    <div className="space-y-4">
+      {/* Seletor de modalidade */}
+      {modalidades.length > 1 && (
+        <div className="flex gap-1 flex-wrap">
+          {modalidades.map(m => (
+            <button
+              key={m.id}
+              onClick={() => { setFiltroModalidadeId(m.id); resetForm() }}
+              className={cn(
+                'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors',
+                filtroModalidadeId === m.id ? 'bg-blue-600 text-white' : 'bg-white border border-gray-200 text-gray-700 hover:border-blue-300'
+              )}
+            >{m.nome}</button>
+          ))}
+        </div>
+      )}
+
+      {modalidades.length === 0 ? (
+        <div className="bg-white rounded-xl border border-gray-200 p-8 text-center">
+          <p className="text-gray-500 text-sm">Cadastre uma modalidade primeiro na aba <strong>Modalidades</strong>.</p>
+        </div>
+      ) : (
+        <>
+          {/* Lista de faixas */}
+          <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <h3 className="font-semibold text-gray-900 text-sm">
+                Faixas — {modalidadeAtual?.nome}
+                <span className="ml-2 text-xs text-gray-400 font-normal">({faixasDaModalidade.length} cadastradas)</span>
+              </h3>
+              {!showForm && (
+                <button
+                  onClick={() => { resetForm(); setShowForm(true) }}
+                  className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors"
+                >
+                  <Plus size={13} /> Nova Faixa
+                </button>
+              )}
+            </div>
+
+            {faixasDaModalidade.length === 0 && !showForm ? (
+              <div className="p-8 text-center">
+                <div className="w-10 h-10 rounded-full bg-gray-100 mx-auto mb-3 flex items-center justify-center">
+                  <span className="text-2xl">🥋</span>
+                </div>
+                <p className="text-gray-500 text-sm">Nenhuma faixa cadastrada para esta modalidade.</p>
+                <button
+                  onClick={() => { resetForm(); setShowForm(true) }}
+                  className="mt-3 text-blue-600 text-sm hover:underline"
+                >+ Adicionar primeira faixa</button>
+              </div>
+            ) : (
+              <div>
+                {faixasDaModalidade.map((g, i) => (
+                  <div key={g.id} className={cn('flex items-center gap-3 px-4 py-3', i > 0 && 'border-t border-gray-50')}>
+                    <span className="text-xs text-gray-400 w-5 shrink-0 text-right">{g.sequencia}</span>
+                    <div className="w-8 h-8 rounded-full border-2 border-white shadow-sm shrink-0" style={{ backgroundColor: g.cor_hex }} />
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium text-gray-900 text-sm">{g.nome}</p>
+                      {g.tempo_minimo_dias && (
+                        <p className="text-xs text-gray-400">Mín. {Math.round(g.tempo_minimo_dias / 30)} meses</p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <button onClick={() => startEdit(g)} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-blue-600 transition-colors">
+                        <Edit2 size={14} />
+                      </button>
+                      <button
+                        onClick={() => { if (confirm(`Excluir faixa "${g.nome}"?`)) { onRemove(g.id); toast.success('Faixa removida!') } }}
+                        className="p-1.5 rounded-lg hover:bg-red-50 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Form inline */}
+            {showForm && (
+              <div className="border-t border-gray-100 px-4 py-4 bg-gray-50 space-y-3">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
+                  {editId ? 'Editar Faixa' : 'Nova Faixa'}
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Nome *</label>
+                    <input
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Ex: Branca, Azul..."
+                      value={form.nome}
+                      onChange={e => setForm(f => ({ ...f, nome: e.target.value }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Sequência</label>
+                    <input
+                      type="number"
+                      min={1}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={form.sequencia}
+                      onChange={e => setForm(f => ({ ...f, sequencia: Number(e.target.value) }))}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Cor</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        className="w-10 h-8 rounded-lg border border-gray-200 cursor-pointer p-0.5 shrink-0"
+                        value={form.cor_hex}
+                        onChange={e => setForm(f => ({ ...f, cor_hex: e.target.value }))}
+                      />
+                      <div
+                        className="flex-1 h-8 rounded-lg border border-gray-200 flex items-center px-2"
+                        style={{ backgroundColor: form.cor_hex }}
+                      >
+                        <span className="text-xs font-mono" style={{ color: isEscuro(form.cor_hex) ? '#fff' : '#374151' }}>{form.cor_hex}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-600 mb-1">Tempo mínimo (dias)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      className="w-full border border-gray-200 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Ex: 365"
+                      value={form.tempo_minimo_dias}
+                      onChange={e => setForm(f => ({ ...f, tempo_minimo_dias: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <button onClick={salvar} className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                    <Check size={14} /> {editId ? 'Atualizar' : 'Cadastrar'}
+                  </button>
+                  <button onClick={resetForm} className="flex items-center gap-1.5 text-gray-600 px-4 py-1.5 rounded-lg text-sm hover:bg-gray-100 transition-colors">
+                    <X size={14} /> Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function isEscuro(hex: string) {
+  const h = hex.replace('#', '')
+  const r = parseInt(h.slice(0, 2), 16)
+  const g = parseInt(h.slice(2, 4), 16)
+  const b = parseInt(h.slice(4, 6), 16)
+  return (r * 299 + g * 587 + b * 114) / 1000 < 128
 }

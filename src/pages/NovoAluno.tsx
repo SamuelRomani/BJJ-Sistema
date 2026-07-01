@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { useStore } from '@/store/useStore'
-import { mockModalidades, mockGraduacoes } from '@/data/mockData'
 import { validateCPF, formatCurrency } from '@/lib/utils'
 import { toast } from 'sonner'
 import { ArrowLeft, Save, FileText, Eye } from 'lucide-react'
@@ -116,7 +115,7 @@ function gerarContrato(aluno: Aluno, academia: Academia, pacote?: Pacote) {
 export function NovoAluno() {
   const navigate = useNavigate()
   const { id } = useParams<{ id: string }>()
-  const { addAluno, updateAluno, alunos, academiaAtualId, pacotes, academias } = useStore()
+  const { addAluno, updateAluno, alunos, academiaAtualId, pacotes, academias, modalidades, graduacoes } = useStore()
   const academia = academias.find(a => a.id === academiaAtualId)
   const pacotesAcademia = pacotes.filter(p => p.academia_id === academiaAtualId && p.ativo)
 
@@ -161,12 +160,14 @@ export function NovoAluno() {
     }
   }, [alunoExistente?.id])
 
+  const modalidadesAcademia = modalidades.filter(m => m.academia_id === academiaAtualId)
+
   const graduacoesFiltradas = form.modalidade_id
-    ? mockGraduacoes.filter(g => g.modalidade_id === form.modalidade_id).sort((a, b) => a.sequencia - b.sequencia)
+    ? graduacoes.filter(g => g.modalidade_id === form.modalidade_id).sort((a, b) => a.sequencia - b.sequencia)
     : []
 
-  const modalidadeSelecionada = mockModalidades.find(m => m.id === form.modalidade_id)
-  const graduacaoSelecionada = mockGraduacoes.find(g => g.id === form.graduacao_inicial_id)
+  const modalidadeSelecionada = modalidadesAcademia.find(m => m.id === form.modalidade_id)
+  const graduacaoSelecionada = graduacoes.find(g => g.id === form.graduacao_inicial_id)
 
   function setField(field: string, value: string) {
     setForm(f => ({ ...f, [field]: value }))
@@ -411,7 +412,7 @@ export function NovoAluno() {
                 }}
               >
                 <option value="">Selecionar modalidade...</option>
-                {mockModalidades.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
+                {modalidadesAcademia.map(m => <option key={m.id} value={m.id}>{m.nome}</option>)}
               </select>
             </Field>
             <Field label={isEdicao ? 'Data da Faixa Atual *' : 'Data da Faixa Inicial *'} error={errors.data_faixa_inicial}>
