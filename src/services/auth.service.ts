@@ -1,12 +1,15 @@
 import { supabase } from '@/lib/supabase'
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any
+
 export const authService = {
   // Login admin/professor
   async signIn(email: string, password: string) {
     const { data, error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) return { ok: false, erro: error.message }
 
-    const { data: perfil } = await supabase
+    const { data: perfil } = await db
       .from('perfis')
       .select('*')
       .eq('id', data.user.id)
@@ -25,7 +28,7 @@ export const authService = {
     if (error) return { ok: false, erro: error.message }
 
     if (data.user && academiaId) {
-      await supabase.from('perfis').update({ academia_id: academiaId, nome }).eq('id', data.user.id)
+      await db.from('perfis').update({ academia_id: academiaId, nome }).eq('id', data.user.id)
     }
 
     return { ok: true, user: data.user }
@@ -43,7 +46,7 @@ export const authService = {
   },
 
   async getPerfil(userId: string) {
-    const { data } = await supabase.from('perfis').select('*').eq('id', userId).single()
+    const { data } = await db.from('perfis').select('*').eq('id', userId).single()
     return data
   },
 }

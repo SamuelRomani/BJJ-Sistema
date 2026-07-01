@@ -111,6 +111,7 @@ export function NovaTurma() {
 
     const modalidade = modalidadesAcademia.find(m => m.id === form.modalidade_id)!
     const professor = professoresAcademia.find(p => p.id === form.professor_id)!
+    const novoId = crypto.randomUUID()
 
     const horariosAtivos: Horario[] = horarios
       .filter(h => h.ativo)
@@ -137,7 +138,6 @@ export function NovaTurma() {
       toast.success('Turma atualizada!')
       navigate('/turmas')
     } else {
-      const novoId = crypto.randomUUID()
       const novaTurma: Turma = {
         id: novoId,
         academia_id: academiaAtualId,

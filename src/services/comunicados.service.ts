@@ -1,11 +1,11 @@
 import { supabase } from '@/lib/supabase'
-import type { Database } from '@/lib/database.types'
 
-type ComunicadoInsert = Database['public']['Tables']['comunicados']['Insert']
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any
 
 export const comunicadosService = {
   async listar(academiaId: string) {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('comunicados')
       .select('*, criado_por_perfil:perfis(nome)')
       .eq('academia_id', academiaId)
@@ -17,7 +17,7 @@ export const comunicadosService = {
 
   // Aluno: busca comunicados da própria academia
   async listarParaAluno(alunoId: string) {
-    const { data: aluno } = await supabase
+    const { data: aluno } = await db
       .from('alunos')
       .select('academia_id, status')
       .eq('id', alunoId)
@@ -25,7 +25,7 @@ export const comunicadosService = {
 
     if (!aluno) return []
 
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('comunicados')
       .select('*')
       .eq('academia_id', aluno.academia_id)
@@ -35,21 +35,21 @@ export const comunicadosService = {
     if (error) throw error
 
     // Filtra conforme destinatários
-    return (data ?? []).filter(c => {
+    return (data ?? []).filter((c: any) => {
       if (c.destinatarios === 'todos') return true
       if (c.destinatarios === 'ativos') return aluno.status === 'ativo'
       return true // inadimplentes — o aluno não sabe disso no app, mas vê
     })
   },
 
-  async criar(comunicado: ComunicadoInsert) {
-    const { data, error } = await supabase.from('comunicados').insert(comunicado).select().single()
+  async criar(comunicado: Record<string, any>) {
+    const { data, error } = await db.from('comunicados').insert(comunicado).select().single()
     if (error) throw error
     return data
   },
 
   async remover(id: string) {
-    const { error } = await supabase.from('comunicados').delete().eq('id', id)
+    const { error } = await db.from('comunicados').delete().eq('id', id)
     if (error) throw error
   },
 
@@ -68,6 +68,6 @@ export const comunicadosService = {
 
   // Marcar como "push enviado" após disparar Web Push
   async marcarPushEnviado(id: string) {
-    await supabase.from('comunicados').update({ enviado_push: true }).eq('id', id)
+    await db.from('comunicados').update({ enviado_push: true }).eq('id', id)
   },
 }

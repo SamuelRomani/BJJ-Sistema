@@ -142,7 +142,7 @@ export const useStore = create<AppState>()(
 
       addProfessor: (p) => {
         set(s => ({ professores: [...s.professores, p] }))
-        writesService.inserirProfessor(p).catch(e => console.error('addProfessor:', e))
+        writesService.inserirProfessor({ id: p.id, nome: p.nome, email: p.email ?? '', foto_url: p.foto_url, academia_id: p.academia_id ?? '' }).catch(e => console.error('addProfessor:', e))
       },
       updateProfessor: (id, data) => {
         set(s => ({ professores: s.professores.map(p => p.id === id ? { ...p, ...data } : p) }))
@@ -151,7 +151,7 @@ export const useStore = create<AppState>()(
 
       addModalidade: (m) => {
         set(s => ({ modalidades: [...s.modalidades, m] }))
-        writesService.inserirModalidade(m).catch(e => console.error('addModalidade:', e))
+        writesService.inserirModalidade({ id: m.id, nome: m.nome, descricao: m.descricao, academia_id: m.academia_id, tem_graus: m.tem_graus ?? false, max_graus: m.max_graus ?? 4 }).catch(e => console.error('addModalidade:', e))
       },
       updateModalidade: (id, data) => {
         set(s => ({ modalidades: s.modalidades.map(m => m.id === id ? { ...m, ...data } : m) }))
