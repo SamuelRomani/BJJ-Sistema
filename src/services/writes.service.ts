@@ -3,7 +3,7 @@
  * O store chama estas funções de forma fire-and-forget após atualizar o estado local.
  */
 import { supabase } from '@/lib/supabase'
-import type { Aluno, CheckIn, Mensalidade, Comunicado, Turma, Pacote, Academia, Graduacao } from '@/types'
+import type { Aluno, CheckIn, Mensalidade, Comunicado, Turma, Pacote, Academia, Graduacao, HistoricoFaixa } from '@/types'
 
 const db = supabase as any
 
@@ -44,7 +44,7 @@ export const writesService = {
     }
   },
 
-  async atualizarAluno(id: string, data: Partial<Aluno>) {
+  async atualizarAluno(id: string, data: Partial<Aluno>, novosHistorico: HistoricoFaixa[] = []) {
     const payload: Record<string, any> = {}
     if (data.nome !== undefined)                  payload.nome = data.nome
     if (data.cpf !== undefined)                   payload.cpf = data.cpf
@@ -58,9 +58,25 @@ export const writesService = {
     if (data.grau_atual !== undefined)            payload.grau_atual = data.grau_atual
     if (data.pacote_id !== undefined)             payload.pacote_id = data.pacote_id ?? null
 
-    if (Object.keys(payload).length === 0) return
-    const { error } = await db.from('alunos').update(payload).eq('id', id)
-    if (error) throw error
+    if (Object.keys(payload).length > 0) {
+      const { error } = await db.from('alunos').update(payload).eq('id', id)
+      if (error) throw error
+    }
+
+    if (novosHistorico.length > 0) {
+      const { error } = await db.from('historico_faixas').insert(
+        novosHistorico.map(h => ({
+          id:            h.id,
+          aluno_id:      h.aluno_id,
+          graduacao_id:  h.graduacao_id,
+          grau:          h.grau ?? 0,
+          data_promocao: h.data_promocao,
+          professor_id:  h.professor_id ?? null,
+          observacoes:   h.observacoes ?? null,
+        }))
+      )
+      if (error) throw error
+    }
   },
 
   async removerAluno(id: string) {

@@ -80,10 +80,14 @@ export function Configuracoes() {
   }
   async function salvar() {
     setSaving(true)
-    await new Promise(r => setTimeout(r, 500))
-    updateAcademia(academiaAtualId, { ...form, horarios_funcionamento: horarios })
-    toast.success('Configurações salvas com sucesso!')
-    setSaving(false)
+    try {
+      await updateAcademia(academiaAtualId, { ...form, horarios_funcionamento: horarios })
+      toast.success('Configurações salvas com sucesso!')
+    } catch {
+      // errToast already shown by store
+    } finally {
+      setSaving(false)
+    }
   }
 
   const TABS: { key: Tab; label: string }[] = [
