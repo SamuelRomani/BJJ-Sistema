@@ -9,8 +9,10 @@ import {
 import { ptBR } from 'date-fns/locale'
 import {
   ArrowLeft, Edit2, Award, CreditCard, CheckSquare, Phone, Mail,
-  Calendar, Flame, TrendingUp, Activity,
+  Calendar, Flame, TrendingUp, Activity, Send, Smartphone,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import { supabase } from '@/lib/supabase'
 import type { AlunoStatus } from '@/types'
 
 const STATUS_COLOR: Record<AlunoStatus, string> = {
@@ -45,12 +47,35 @@ function buildHeatmapWeeks(days: string[], ciSet: Set<string>): { date: string; 
   return weeks
 }
 
+const ALUNO_APP_URL = import.meta.env.VITE_ALUNO_APP_URL ?? 'https://bjj-aluno.vercel.app'
+
 export function PerfilAluno() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { alunos, mensalidades, checkIns, turmas, user } = useStore()
   const isProfessor = user?.role === 'professor'
   const [tab, setTab] = useState<Tab>('resumo')
+  const [enviandoConvite, setEnviandoConvite] = useState(false)
+
+  async function enviarConvite() {
+    if (!aluno?.email) { toast.error('Aluno sem email cadastrado'); return }
+    setEnviandoConvite(true)
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email: aluno.email,
+        options: {
+          shouldCreateUser: true,
+          emailRedirectTo: ALUNO_APP_URL,
+        },
+      })
+      if (error) throw error
+      toast.success(`Convite enviado para ${aluno.email}!`)
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Erro ao enviar convite')
+    } finally {
+      setEnviandoConvite(false)
+    }
+  }
 
   const aluno = alunos.find(a => a.id === id)
   if (!aluno) return (
@@ -203,7 +228,7 @@ export function PerfilAluno() {
               <p className="text-gray-400 text-xs mt-1">CPF: {formatCPF(aluno.cpf)}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
             <span className={cn('px-3 py-1 rounded-full text-sm font-medium', STATUS_COLOR[aluno.status])}>
               {aluno.status.charAt(0).toUpperCase() + aluno.status.slice(1)}
             </span>
@@ -213,6 +238,17 @@ export function PerfilAluno() {
             >
               <Edit2 size={14} /> Editar
             </Link>
+            {!isProfessor && (
+              <button
+                onClick={enviarConvite}
+                disabled={enviandoConvite}
+                title="Envia magic link para o aluno acessar o app"
+                className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded-lg text-sm hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+              >
+                <Smartphone size={14} />
+                {enviandoConvite ? 'Enviando...' : 'Convidar para App'}
+              </button>
+            )}
           </div>
         </div>
 

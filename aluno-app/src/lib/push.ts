@@ -9,11 +9,15 @@ function urlBase64ToUint8Array(base64String: string) {
   return new Uint8Array([...rawData].map(c => c.charCodeAt(0)))
 }
 
-export async function registrarPush(alunoId: string) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const db = supabase as any
+
+export async function registrarPush(alunoId: string): Promise<boolean> {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
     console.warn('Push não suportado neste navegador')
     return false
   }
+  if (!VAPID_PUBLIC_KEY) { console.warn('VAPID_PUBLIC_KEY não configurada'); return false }
 
   const permission = await Notification.requestPermission()
   if (permission !== 'granted') return false
@@ -27,11 +31,11 @@ export async function registrarPush(alunoId: string) {
   const json = sub.toJSON()
   const keys = json.keys as { p256dh: string; auth: string }
 
-  await supabase.from('push_subscriptions').upsert({
+  await db.from('push_subscriptions').upsert({
     aluno_id: alunoId,
     endpoint: sub.endpoint,
-    p256dh: keys.p256dh,
-    auth: keys.auth,
+    p256dh:   keys.p256dh,
+    auth:     keys.auth,
   }, { onConflict: 'aluno_id,endpoint' })
 
   return true
@@ -42,8 +46,17 @@ export async function cancelarPush(alunoId: string) {
   const sub = await sw.pushManager.getSubscription()
   if (sub) {
     await sub.unsubscribe()
-    await supabase.from('push_subscriptions').delete()
+    await db.from('push_subscriptions').delete()
       .eq('aluno_id', alunoId)
       .eq('endpoint', sub.endpoint)
   }
+}
+
+export async function temPushAtivo(): Promise<boolean> {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return false
+  try {
+    const sw = await navigator.serviceWorker.ready
+    const sub = await sw.pushManager.getSubscription()
+    return !!sub
+  } catch { return false }
 }
